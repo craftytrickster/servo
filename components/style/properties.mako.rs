@@ -5725,47 +5725,51 @@ pub struct PropertyDeclarationBlock {
 }
 
 impl PropertyDeclarationBlock {
-    // TODO: make serialize follow spec - https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
+    // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
     pub fn serialize(&self) -> String {
-        fn decl_name(decl: &PropertyDeclaration) -> String {
-            format!("{}", decl.name())
-        }
 
-        let mut list = Vec::new();
+        let mut result_list = String::new();
         let mut already_serialized = HashSet::new();
 
-        // leave out !important stuff for now
-        let declarations = self.normal.iter().cloned();
-
-        for declaration in declarations {
-            let property = format!("{}", &declaration.name());
-            println!("let property = {}", &property);
-
-            println!("result list {:?}", &list);
-            println!("serialized list {:?}", already_serialized);
-
+        for declaration in self.normal.iter().chain(self.important.iter()) {
+            let property = declaration.name().to_string();
             if already_serialized.contains(&property) {
                 continue;
             }
 
 
-            let mut shorthands = Vec::new();
-            shorthands.extend_from_slice(declaration.shorthands());
+            let mut shorthands = Vec::from(declaration.shorthands());
 
             if shorthands.len() > 0 {
-                let mut longhands = self.normal.iter().cloned()
-                    .filter(|d| !already_serialized.contains(&decl_name(d)))
+                shorthands.sort_by(|a,b| a.longhands().len().cmp(&b.longhands().len()));
+
+                // TODO: Help -  I do not want to do iter cloned, is there a way to
+                // somehow collection into a list or Vec of references?
+                let mut longhands = self.normal.iter().chain(self.important.iter()).cloned()
+                    .filter(|d| !already_serialized.contains(&d.name().to_string()))
                     .collect::<Vec<PropertyDeclaration>>();
 
-                shorthands.sort_by(|a,b| a.longhands().len().cmp(&b.longhands().len()));
                 for shorthand in shorthands {
                     let properties = shorthand.longhands();
 
+                    // TODO: HELP - want to avoid this cloned if possible
+                    // step 3.3.2.3
                     let current_longhands = longhands.iter().cloned()
-                        .filter(|l| properties.contains(&&decl_name(l).trim()))
+                        .filter(|l| properties.contains(&&&*l.name().to_string()))
                         .collect::<Vec<PropertyDeclaration>>();
 
+                    // step 3.3.2.1
                     if current_longhands.len() == 0 {
+                        continue;
+                    }
+
+                    // PropertyDeclarationBlocks do not have their own flag to indicate
+                    // important or no, which is why this is necessary
+                    let important_count = current_longhands.iter()
+                        .filter(|l| self.important.contains(l))
+                        .count();
+
+                    if important_count == current_longhands.len() {
                         continue;
                     }
 
@@ -5773,31 +5777,19 @@ impl PropertyDeclarationBlock {
                         continue;
                     }
 
-                    let value = shorthand.serialize_shorthand(&current_longhands);
+                    let is_important = important_count > 0;
+                    // serialize shorthand does not take is_important into account currently
+                    let value value = shorthand.serialize_shorthand(&current_longhands);
                     if value.is_empty() {
                         continue;
                     }
 
-                    // shorthand to name doesn't exist yet
-                    list.push(format!("{}: {}", &shorthand.to_name(), value));
+                    result_list.push_str(&format!("{}: {}; ", &shorthand.to_name(), value));
 
                     for current_longhand in current_longhands {
-                        already_serialized.push(decl_name(&current_longhand));
-
-                         // remove from regular longhands
-                        let mut index = 0;
-                        let mut found_index = None;
-                        for longhand in longhands.iter() {
-                            println!("{:?} ==  {:?}", &longhand, &current_longhand);
-                            if longhand == &current_longhand {
-                                found_index = Some(index);
-                                break;
-                            }
-                            index += 1;
-                        }
-
-                        if let Some(index) = found_index {
-                            println!("index = {} ---> {:?}", index, &longhands[index]);
+                        already_serialized.insert(current_longhand.name().to_string());
+                        let index_to_remove = longhands.iter().position(|l| l == &current_longhand);
+                        if let Some(index) = index_to_remove {
                             longhands.remove(index);
                         }
                      }
@@ -5808,15 +5800,17 @@ impl PropertyDeclarationBlock {
                 continue;
             }
 
-            println!("{}: {}", &property, &declaration.value());
+            let mut value = declaration.value();
+            if self.important.contains(declaration) {
+                value.push_str(" ! important");
+            }
 
-            list.push(format!("{}: {}", &property, &declaration.value()));
-            already_serialized.push(property);
+            result_list.push_str(&format!("{}: {}; ", &property, value));
+            already_serialized.insert(property);
         }
 
-        let result = str_join(list.iter(), "; ");
-        println!("r - {}", &result);
-        result
+        result_list.pop();
+        result_list
     }
 }
 
