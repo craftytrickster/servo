@@ -5761,7 +5761,7 @@ impl PropertyDeclarationBlock {
 
                     let mut is_property_missing = false;
                     for property in properties {
-                        if !current_longhand_properties.contains(&String::from(*property)) {
+                        if !current_longhand_properties.contains(*property) {
                             is_property_missing = true;
                             break;
                         }
@@ -5966,7 +5966,6 @@ pub enum Shorthand {
 }
 
 use std::borrow::ToOwned;
-use std::cell::Ref;
 use std::iter::FromIterator;
 use util::str::str_join;
 
