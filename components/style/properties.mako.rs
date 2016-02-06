@@ -5711,6 +5711,10 @@ pub struct PropertyDeclarationBlock {
 impl PropertyDeclarationBlock {
     // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
     pub fn serialize(&self) -> String {
+        // PARSE FAIL START
+        let thing: Vec<&PropertyDeclaration> = Vec::new();
+        // PARSE FAIL END
+
         // Step 1
         let mut result_list = String::new();
 
