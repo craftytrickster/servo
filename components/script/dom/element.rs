@@ -660,18 +660,13 @@ impl Element {
             return;
         }
 
-        // if style is provided, but attr doesn't exist yet
-        let window = window_from_node(self);
-
-        let attr = Attr::new(&window,
-                             atom!("style"),
-                             new_style,
-                             atom!("style"),
-                             ns!(),
-                             Some(atom!("style")),
-                             Some(self));
-
-        self.attrs.borrow_mut().push(JS::from_rooted(&attr));
+        self.push_new_attribute(
+            atom!("style"),
+            new_style,
+            atom!("style"),
+            ns!(),
+            Some(atom!("style"))
+        );
     }
 
     pub fn remove_inline_style_property(&self, property: &str) {
