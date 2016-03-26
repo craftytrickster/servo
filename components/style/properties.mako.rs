@@ -12,6 +12,7 @@ use std::ascii::AsciiExt;
 use std::collections::HashSet;
 use std::default::Default;
 use std::fmt;
+use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::intrinsics;
 use std::mem;
@@ -5674,11 +5675,10 @@ pub struct PropertyDeclarationBlock {
     pub normal: Arc<Vec<PropertyDeclaration>>,
 }
 
-impl PropertyDeclarationBlock {
+impl ToCss for PropertyDeclarationBlock {
     // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
-    pub fn serialize(&self) -> String {
-        // Step 1
-        let mut result_list = String::new();
+    fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
+        // Step 1 -> dest = result list
 
         // Step 2
         let mut already_serialized = Vec::new();
@@ -5742,7 +5742,7 @@ impl PropertyDeclarationBlock {
                     }
 
                     // Substep 7 & 8
-                    result_list.push_str(&format!("{}: {}; ", &shorthand.name(), value));
+                    write!(dest, "{}: {}; ", &shorthand.name(), value).unwrap();
 
                     for current_longhand in current_longhands {
                         // Substep 9
@@ -5767,15 +5767,14 @@ impl PropertyDeclarationBlock {
                 value.push_str(" !important");
             }
             // Steps 3.3.6 & 3.3.7
-            result_list.push_str(&format!("{}: {}; ", &property, value));
+            write!(dest, "{}: {}; ", &property, value).unwrap();
 
             // Step 3.3.8
             already_serialized.push(property);
         }
 
-        result_list.pop(); // remove trailling whitespace
         // Step 4
-        result_list
+        Ok(())
     }
 }
 
