@@ -5675,9 +5675,21 @@ pub struct PropertyDeclarationBlock {
     pub normal: Arc<Vec<PropertyDeclaration>>,
 }
 
+fn append_css_property_value(dest: &mut Write, property: &str, value: &str, dest_appended: &mut bool) {
+    if !*dest_appended {
+        write!(dest, "{}: {};", property, value).unwrap();
+        *dest_appended = true;
+    }
+    else {
+        write!(dest, " {}: {};", property, value).unwrap();
+    }
+}
+
 impl ToCss for PropertyDeclarationBlock {
     // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
     fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
+        let mut dest_appended = false;
+
         // Step 1 -> dest = result list
 
         // Step 2
@@ -5742,7 +5754,7 @@ impl ToCss for PropertyDeclarationBlock {
                     }
 
                     // Substep 7 & 8
-                    write!(dest, "{}: {}; ", &shorthand.name(), value).unwrap();
+                    append_css_property_value(dest, &shorthand.name(), &value, &mut dest_appended);
 
                     for current_longhand in current_longhands {
                         // Substep 9
@@ -5767,7 +5779,7 @@ impl ToCss for PropertyDeclarationBlock {
                 value.push_str(" !important");
             }
             // Steps 3.3.6 & 3.3.7
-            write!(dest, "{}: {}; ", &property, value).unwrap();
+            append_css_property_value(dest, &property.to_string(), &value, &mut dest_appended);
 
             // Step 3.3.8
             already_serialized.push(property);
