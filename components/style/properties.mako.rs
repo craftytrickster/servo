@@ -5675,20 +5675,10 @@ pub struct PropertyDeclarationBlock {
     pub normal: Arc<Vec<PropertyDeclaration>>,
 }
 
-fn append_css_property_value(dest: &mut Write, property: &str, value: &str, dest_appended: &mut bool) {
-    if !*dest_appended {
-        write!(dest, "{}: {};", property, value).unwrap();
-        *dest_appended = true;
-    }
-    else {
-        write!(dest, " {}: {};", property, value).unwrap();
-    }
-}
-
 impl ToCss for PropertyDeclarationBlock {
     // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
     fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
-        let mut dest_appended = false;
+        let mut is_first_serialization = true; // trailing serializations should have a prepended space
 
         // Step 1 -> dest = result list
 
@@ -5754,7 +5744,13 @@ impl ToCss for PropertyDeclarationBlock {
                     }
 
                     // Substep 7 & 8
-                    append_css_property_value(dest, &shorthand.name(), &value, &mut dest_appended);
+                    if !is_first_serialization {
+                        write!(dest, " ");
+                    }
+                    else {
+                        is_first_serialization = false;
+                    }
+                    write!(dest, "{}: {};", &shorthand.name(), &value);
 
                     for current_longhand in current_longhands {
                         // Substep 9
@@ -5773,13 +5769,25 @@ impl ToCss for PropertyDeclarationBlock {
                 continue;
             }
 
-            // Step 3.3.5
-            let mut value = declaration.value();
-            if self.important.contains(declaration) {
-                value.push_str(" !important");
+            // Steps 3.3.5, 3.3.6 & 3.3.7
+            if !is_first_serialization {
+                write!(dest, " ");
             }
-            // Steps 3.3.6 & 3.3.7
-            append_css_property_value(dest, &property.to_string(), &value, &mut dest_appended);
+            else {
+                is_first_serialization = false;
+            }
+
+            write!(dest, "{}: ", &property);
+
+            if let Err(_) = declaration.to_css(dest) {
+                return Err(fmt::Error);
+            }
+
+            if self.important.contains(declaration) {
+                write!(dest, " !important");
+            }
+
+            write!(dest, ";");
 
             // Step 3.3.8
             already_serialized.push(property);
@@ -6065,6 +6073,25 @@ impl fmt::Display for PropertyDeclarationName {
         }
     }
 }
+impl ToCss for PropertyDeclaration {
+    fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
+        let to_css_result = match *self {
+            % for property in LONGHANDS:
+                % if property.derived_from is None:
+                    PropertyDeclaration::${property.camel_case}(ref value) =>
+                        value.to_css(dest),
+                % endif
+            % endfor
+            PropertyDeclaration::Custom(_, ref value) => value.to_css(dest),
+            _ => return Err(fmt::Error),
+        };
+
+        match to_css_result {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
+    }
+}
 
 impl PropertyDeclaration {
     pub fn name(&self) -> PropertyDeclarationName {
@@ -6084,16 +6111,12 @@ impl PropertyDeclaration {
     }
 
     pub fn value(&self) -> String {
-        match *self {
-            % for property in LONGHANDS:
-                % if property.derived_from is None:
-                    PropertyDeclaration::${property.camel_case}(ref value) =>
-                        value.to_css_string(),
-                % endif
-            % endfor
-            PropertyDeclaration::Custom(_, ref value) => value.to_css_string(),
-            ref decl => panic!("unsupported property declaration: {}", decl.name()),
+        let mut value = String::new();
+        if let Err(_) = self.to_css(&mut value) {
+            panic!("unsupported property declaration: {}", self.name());
         }
+
+        value
     }
 
     /// If this is a pending-substitution value from the given shorthand, return that value
