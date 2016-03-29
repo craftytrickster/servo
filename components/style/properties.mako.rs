@@ -5675,6 +5675,36 @@ pub struct PropertyDeclarationBlock {
     pub normal: Arc<Vec<PropertyDeclaration>>,
 }
 
+fn append_serialization</*F, */W>(dest: &mut W,
+                     property_name: &str,
+
+                     //value_write: F,
+                     // how do I pass in a something like (self) property_declaration.to_css a a function?
+                     // Ideally, I want to pass in a function that takes dest as a parameter
+
+                     declaration: &PropertyDeclaration,
+                     is_important: bool,
+                     is_first_serialization: &mut bool) -> fmt::Result where
+                        W: fmt::Write /*F: Fn(&mut W) -> fmt::Result */ {
+
+                            if !*is_first_serialization {
+                                try!(write!(dest, " "));
+                            }
+                            else {
+                                *is_first_serialization = false;
+                            }
+
+                            try!(write!(dest, "{}: ", property_name));
+
+                            try!(declaration.to_css(dest));  //value_write(dest)
+
+                            if is_important {
+                                try!(write!(dest, " !important"));
+                            }
+
+                            write!(dest, ";")
+}
+
 impl ToCss for PropertyDeclarationBlock {
     // https://drafts.csswg.org/cssom/#serialize-a-css-declaration-block
     fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
@@ -5744,13 +5774,14 @@ impl ToCss for PropertyDeclarationBlock {
                     }
 
                     // Substep 7 & 8
+                    // ideally, we would call append_serialization, but need help
                     if !is_first_serialization {
-                        write!(dest, " ");
+                        try!(write!(dest, " "));
                     }
                     else {
                         is_first_serialization = false;
                     }
-                    write!(dest, "{}: {};", &shorthand.name(), &value);
+                    try!(write!(dest, "{}: {};", &shorthand.name(), &value));
 
                     for current_longhand in current_longhands {
                         // Substep 9
@@ -5770,24 +5801,12 @@ impl ToCss for PropertyDeclarationBlock {
             }
 
             // Steps 3.3.5, 3.3.6 & 3.3.7
-            if !is_first_serialization {
-                write!(dest, " ");
-            }
-            else {
-                is_first_serialization = false;
-            }
-
-            write!(dest, "{}: ", &property);
-
-            if let Err(_) = declaration.to_css(dest) {
-                return Err(fmt::Error);
-            }
-
-            if self.important.contains(declaration) {
-                write!(dest, " !important");
-            }
-
-            write!(dest, ";");
+            let append_important = self.important.contains(declaration);
+            try!(append_serialization(dest,
+                                 &property.to_string(),
+                                 declaration,
+                                 append_important,
+                                 &mut is_first_serialization));
 
             // Step 3.3.8
             already_serialized.push(property);
@@ -6075,7 +6094,7 @@ impl fmt::Display for PropertyDeclarationName {
 }
 impl ToCss for PropertyDeclaration {
     fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
-        let to_css_result = match *self {
+        match *self {
             % for property in LONGHANDS:
                 % if property.derived_from is None:
                     PropertyDeclaration::${property.camel_case}(ref value) =>
@@ -6083,12 +6102,7 @@ impl ToCss for PropertyDeclaration {
                 % endif
             % endfor
             PropertyDeclaration::Custom(_, ref value) => value.to_css(dest),
-            _ => return Err(fmt::Error),
-        };
-
-        match to_css_result {
-            Ok(_) => Ok(()),
-            Err(_) => Err(fmt::Error)
+            _ => Err(fmt::Error),
         }
     }
 }
