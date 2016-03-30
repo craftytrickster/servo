@@ -5694,7 +5694,11 @@ fn append_serialization</*F, */W>(dest: &mut W,
                                 *is_first_serialization = false;
                             }
 
-                            try!(write!(dest, "{}: ", property_name));
+                            try!(write!(dest, "{}:", property_name));
+
+                            if !declaration.value_is_unparsed() {
+                                try!(write!(dest, " "));
+                            }
 
                             try!(declaration.to_css(dest));  //value_write(dest)
 
@@ -6166,6 +6170,20 @@ impl PropertyDeclaration {
                 _ => false,
             }
         }
+    }
+
+    /// Return whether the value is stored as it was in the CSS source, preserving whitespace
+    /// (as opposed to being parsed into a more abstract data structure).
+    /// This is the case of custom properties and values that contain unsubstituted variables.
+    pub fn value_is_unparsed(&self) -> bool {
+      match *self {
+          % for property in LONGHANDS:
+              PropertyDeclaration::${property.camel_case}(ref value) => {
+                  matches!(*value, DeclaredValue::WithVariables { .. })
+              },
+          % endfor
+          PropertyDeclaration::Custom(..) => true
+      }
     }
 
     pub fn matches(&self, name: &str) -> bool {
