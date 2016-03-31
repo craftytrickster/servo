@@ -147,7 +147,8 @@ impl CSSStyleDeclarationMethods for CSSStyleDeclaration {
 
             // Step 2.3
             let list = list.iter().map(|x| &*x).collect::<Vec<_>>();
-            return DOMString::from(shorthand.serialize_shorthand(&list));
+            let serialized_value = shorthand.serialize_shorthand_to_string(&list);
+            return DOMString::from(serialized_value);
         }
 
         // Step 3 & 4

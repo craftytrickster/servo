@@ -5770,22 +5770,14 @@ impl ToCss for PropertyDeclarationBlock {
 
                     // TODO: serialize shorthand does not take is_important into account currently
                     // Substep 5
-                    let value = shorthand.serialize_shorthand(&current_longhands[..]);
+                    let was_serialized =
+                        shorthand.serialize_shorthand_to_buffer(dest, &current_longhands[..], &mut is_first_serialization);
+                    // If serialization occured, Substep 7 & 8 will have been completed
 
                     // Substep 6
-                    if value.is_empty() {
+                    if !was_serialized {
                         continue;
                     }
-
-                    // Substep 7 & 8
-                    // ideally, we would call append_serialization, but need help
-                    if !is_first_serialization {
-                        try!(write!(dest, " "));
-                    }
-                    else {
-                        is_first_serialization = false;
-                    }
-                    try!(write!(dest, "{}: {};", &shorthand.name(), &value));
 
                     for current_longhand in current_longhands {
                         // Substep 9
@@ -5993,25 +5985,58 @@ impl Shorthand {
         }
     }
 
-    pub fn serialize_shorthand(self, declarations: &[&PropertyDeclaration]) -> String {
+    pub fn serialize_shorthand_to_string(self, declarations: &[&PropertyDeclaration]) -> String {
+        let mut result = String::new();
+        self.serialize_shorthand_to_buffer(&mut result, declarations, &mut true);
+        result
+    }
+
+    pub fn serialize_shorthand_to_buffer<W>(self,
+                                  dest: &mut W,
+                                  declarations: &[&PropertyDeclaration],
+                                  is_first_serialization: &mut bool)
+         -> bool where W: Write {
+
+        let property_name = self.name();
+
         // https://drafts.csswg.org/css-variables/#variables-in-shorthands
         if let Some(css) = declarations[0].with_variables_from_shorthand(self) {
             if declarations[1..]
                    .iter()
                    .all(|d| d.with_variables_from_shorthand(self) == Some(css)) {
-                css.to_owned()
+
+                       if !*is_first_serialization {
+                           write!(dest, " ").unwrap();
+                       }
+                       else {
+                           *is_first_serialization = false;
+                       }
+                       write!(dest, "{}: {};", property_name, css).unwrap();
+
+                true
             } else {
-                String::new()
+                false
             }
         } else {
             if declarations.iter().any(|d| d.with_variables()) {
-                String::new()
+                false
             } else {
-                let str_iter = declarations.iter().map(|d| d.value());
+                for declaration in declarations.iter() {
+                    if !*is_first_serialization {
+                        write!(dest, " ").unwrap();
+                    }
+                    else {
+                        *is_first_serialization = false;
+                    }
+
+                    write!(dest, "{}: ", property_name).unwrap();
+                    declaration.to_css(dest).unwrap();
+                    write!(dest, ";").unwrap();
+                }
                 // FIXME: this needs property-specific code, which probably should be in style/
                 // "as appropriate according to the grammar of shorthand "
                 // https://drafts.csswg.org/cssom/#serialize-a-css-value
-                str_join(str_iter, " ")
+                true
             }
         }
     }
