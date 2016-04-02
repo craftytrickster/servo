@@ -5753,7 +5753,7 @@ impl ToCss for PropertyDeclarationBlock {
                     // TODO: serialize shorthand does not take is_important into account currently
                     // Substep 5
                     let was_serialized =
-                        try!(shorthand.serialize_shorthand_to_buffer(dest, &current_longhands[..], &mut is_first_serialization));
+                            try!(shorthand.serialize_shorthand_to_buffer(dest, &mut current_longhands.iter().cloned(), &mut is_first_serialization));
                     // If serialization occured, Substep 7 & 8 will have been completed
 
                     // Substep 6
@@ -6004,7 +6004,7 @@ impl Shorthand {
     }
 
     /// Serializes possible shorthand value to String.
-    pub fn serialize_shorthand_to_string(self, declarations: &[&PropertyDeclaration]) -> String {
+    pub fn serialize_shorthand_to_string(self, declarations: &mut Iterator<Item=&PropertyDeclaration>) -> String {
         let mut result = String::new();
         self.serialize_shorthand_to_buffer(&mut result, declarations, &mut true).unwrap();
         result
@@ -6014,39 +6014,43 @@ impl Shorthand {
     /// On success, returns true if shorthand value is written and false if no shorthand value is present.
     pub fn serialize_shorthand_to_buffer<W>(self,
                                             dest: &mut W,
-                                            declarations: &[&PropertyDeclaration],
+                                            declarations: &mut Iterator<Item=&PropertyDeclaration>,
                                             is_first_serialization: &mut bool)
          -> Result<bool, fmt::Error> where W: Write {
+
+
+        let first_declaration = match declarations.next() {
+            Some(declaration) => declaration,
+            None => return Ok(false)
+        };
 
         let property_name = self.name();
 
         // https://drafts.csswg.org/css-variables/#variables-in-shorthands
-        if let Some(css) = declarations[0].with_variables_from_shorthand(self) {
-            if declarations[1..]
-                   .iter()
-                   .all(|d| d.with_variables_from_shorthand(self) == Some(css)) {
-
-                       append_serialization(
-                           dest, property_name, AppendableValue::Css(css), false, is_first_serialization
-                       ).and_then(|_| Ok(true))
-            } else {
-                Ok(false)
-            }
-        } else {
-            if declarations.iter().any(|d| d.with_variables()) {
-                Ok(false)
-            } else {
-                for declaration in declarations.iter() {
-                    try!(append_serialization(
-                        dest, property_name, AppendableValue::Declaration(declaration), false, is_first_serialization
-                    ));
-                }
-                // FIXME: this needs property-specific code, which probably should be in style/
-                // "as appropriate according to the grammar of shorthand "
-                // https://drafts.csswg.org/cssom/#serialize-a-css-value
-                Ok(true)
-            }
+        if let Some(css) = first_declaration.with_variables_from_shorthand(self) {
+            if declarations.cloned().all(|d| d.with_variables_from_shorthand(self) == Some(css)) {
+               return append_serialization(
+                   dest, property_name, AppendableValue::Css(css), false, is_first_serialization
+               ).and_then(|_| Ok(true));
+           }
+           else {
+               return Ok(false);
+           }
         }
+
+        if !declarations.cloned().any(|d| d.with_variables()) {
+            for declaration in declarations {
+                try!(append_serialization(
+                    dest, property_name, AppendableValue::Declaration(declaration), false, is_first_serialization
+                ));
+            }
+            // FIXME: this needs property-specific code, which probably should be in style/
+            // "as appropriate according to the grammar of shorthand "
+            // https://drafts.csswg.org/cssom/#serialize-a-css-value
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 }
 
