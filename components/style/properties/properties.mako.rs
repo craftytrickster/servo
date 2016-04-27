@@ -5381,7 +5381,7 @@ impl ToCss for PropertyDeclarationBlock {
 enum AppendableValue<'a, I>
 where I: Iterator<Item=&'a PropertyDeclaration> {
     Declaration(&'a PropertyDeclaration),
-    DeclarationsForShorthand(I),
+    DeclarationsForShorthand(Shorthand, I),
     Css(&'a str, bool)
 }
 
@@ -5414,15 +5414,8 @@ fn append_declaration_value<'a, W, I>
       AppendableValue::Declaration(decl) => {
           try!(decl.to_css(dest));
        },
-       AppendableValue::DeclarationsForShorthand(decls) => {
-           let mut decls = decls.peekable();
-           while let Some(decl) = decls.next() {
-               try!(decl.to_css(dest));
-
-               if decls.peek().is_some() {
-                   try!(write!(dest, " "));
-               }
-           }
+       AppendableValue::DeclarationsForShorthand(shorthand, decls) => {
+           try!(append_shorthand_value(dest, shorthand, decls));
        }
   }
 
@@ -5457,11 +5450,124 @@ fn append_serialization<'a, W, I>(dest: &mut W,
                 try!(write!(dest, " "));
             }
          },
-         &AppendableValue::DeclarationsForShorthand(_) => try!(write!(dest, " "))
+         &AppendableValue::DeclarationsForShorthand(_, _) => try!(write!(dest, " "))
     }
 
     try!(append_declaration_value(dest, appendable_value, is_important));
     write!(dest, ";")
+}
+
+fn append_shorthand_value<'a, W, I>(dest: &mut W,
+                                    shorthand: Shorthand,
+                                    declarations: I)
+                            -> fmt::Result
+                            where W: fmt::Write, I: Iterator<Item=&'a PropertyDeclaration> {
+
+    match shorthand {
+        Shorthand::Margin => {
+            let mut top = None;
+            let mut right = None;
+            let mut bottom = None;
+            let mut left = None;
+
+            for decl in declarations {
+                match decl {
+                    &PropertyDeclaration::MarginTop(ref value) => { top = Some(value); },
+                    &PropertyDeclaration::MarginRight(ref value) => { right = Some(value); },
+                    &PropertyDeclaration::MarginBottom(ref value) => { bottom = Some(value); },
+                    &PropertyDeclaration::MarginLeft(ref value) => { left = Some(value); },
+                    _ => return Err(fmt::Error)
+                }
+            }
+
+            let (top, right, bottom, left) = match (top, right, bottom, left) {
+                (Some(top), Some(right), Some(bottom), Some(left)) => {
+                    (top, right, bottom, left)
+                },
+                _ => return Err(fmt::Error)
+            };
+
+            try!(append_positional_shorthand(dest, top, right, bottom, left));
+        },
+        Shorthand::Padding => {
+            let mut top = None;
+            let mut right = None;
+            let mut bottom = None;
+            let mut left = None;
+
+            for decl in declarations {
+                match decl {
+                    &PropertyDeclaration::PaddingTop(ref value) => { top = Some(value); },
+                    &PropertyDeclaration::PaddingRight(ref value) => { right = Some(value); },
+                    &PropertyDeclaration::PaddingBottom(ref value) => { bottom = Some(value); },
+                    &PropertyDeclaration::PaddingLeft(ref value) => { left = Some(value); },
+                    _ => return Err(fmt::Error)
+                }
+            }
+
+            let (top, right, bottom, left) = match (top, right, bottom, left) {
+                (Some(top), Some(right), Some(bottom), Some(left)) => {
+                    (top, right, bottom, left)
+                },
+                _ => return Err(fmt::Error)
+            };
+
+            try!(append_positional_shorthand(dest, top, right, bottom, left));
+        }
+        _ => {}
+    };
+
+    Ok(())
+}
+
+fn append_positional_shorthand<W, I>(dest: &mut W,
+                                  top: &DeclaredValue<I>,
+                                  right: &DeclaredValue<I>,
+                                  bottom: &DeclaredValue<I>,
+                                  left: &DeclaredValue<I>)
+                                  -> fmt::Result where W: fmt::Write, I: ToCss + ToComputedValue + PartialEq {
+
+      if left == right {
+          let horizontal_value = left;
+
+          if top == bottom {
+              let vertical_value = top;
+
+               if horizontal_value == vertical_value {
+                   let single_value = horizontal_value;
+                   try!(single_value.to_css(dest));
+               }
+               else {
+                   try!(vertical_value.to_css(dest));
+                   try!(write!(dest, " "));
+
+                   try!(horizontal_value.to_css(dest));
+               }
+          }
+          else {
+              try!(top.to_css(dest));
+              try!(write!(dest, " "));
+
+              try!(horizontal_value.to_css(dest));
+              try!(write!(dest, " "));
+
+              try!(bottom.to_css(dest));
+          }
+      }
+      else {
+          try!(top.to_css(dest));
+          try!(write!(dest, " "));
+
+          try!(right.to_css(dest));
+          try!(write!(dest, " "));
+
+          try!(bottom.to_css(dest));
+          try!(write!(dest, " "));
+
+          try!(left.to_css(dest));
+      }
+
+      Ok(())
 }
 
 pub fn parse_style_attribute(input: &str, base_url: &Url, error_reporter: StdBox<ParseErrorReporter + Send>)
@@ -5479,6 +5585,7 @@ pub fn parse_one_declaration(name: &str, input: &str, base_url: &Url, error_repo
         _ => Err(())
     }
 }
+
 
 struct PropertyDeclarationParser<'a, 'b: 'a> {
     context: &'a ParserContext<'b>,
@@ -5690,7 +5797,7 @@ impl Shorthand {
             }
 
             if !declarations3.any(|d| d.with_variables()) {
-                return Some(AppendableValue::DeclarationsForShorthand(declarations));
+                return Some(AppendableValue::DeclarationsForShorthand(self, declarations));
                 // FIXME: this needs property-specific code, which probably should be in style/
                 // "as appropriate according to the grammar of shorthand "
                 // https://drafts.csswg.org/cssom/#serialize-a-css-value
