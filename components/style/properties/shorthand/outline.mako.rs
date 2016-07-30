@@ -78,7 +78,7 @@
         match *color {
             DeclaredValue::Initial => Ok(()),
             _ => {
-                write!(dest, " ")
+                try!(write!(dest, " "));
                 color.to_css(dest)
             }
         }

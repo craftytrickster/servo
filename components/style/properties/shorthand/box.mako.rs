@@ -15,10 +15,15 @@
         })
     }
 
+
     // Overflow does not behave like a normal shorthand. When overflow-x and overflow-y are not of equal
     // values, they no longer use the shared property name "overflow".
     // Serialize is implemented elsewhere as a result here
+    pub fn serialize<'a, W, I>(_: &mut W, _: I) -> fmt::Result
+        where W: fmt::Write, I: Iterator<Item=&'a PropertyDeclaration> {
 
+        Ok(())
+    }
 </%helpers:shorthand>
 
 macro_rules! try_parse_one {
@@ -39,7 +44,7 @@ macro_rules! try_parse_one {
     use properties::longhands::{transition_delay, transition_duration, transition_property};
     use properties::longhands::{transition_timing_function};
 
-    pub fn parse_value(context: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
+    pub fn parse_value(_: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
         struct SingleTransition {
             transition_property: transition_property::SingleSpecifiedValue,
             transition_duration: transition_duration::SingleSpecifiedValue,
@@ -146,7 +151,7 @@ macro_rules! try_parse_one {
     use properties::longhands::{animation_delay, animation_iteration_count, animation_direction};
     use properties::longhands::{animation_fill_mode, animation_play_state};
 
-    pub fn parse_value(context: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
+    pub fn parse_value(_: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
         struct SingleAnimation {
             animation_name: animation_name::SingleSpecifiedValue,
             animation_duration: animation_duration::SingleSpecifiedValue,

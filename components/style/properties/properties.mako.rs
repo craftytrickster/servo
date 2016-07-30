@@ -120,7 +120,7 @@ pub mod shorthands {
         Ok((top, right, bottom, left))
     }
 
-
+    <%include file="/shorthand/serialize.mako.rs" />
     <%include file="/shorthand/background.mako.rs" />
     <%include file="/shorthand/border.mako.rs" />
     <%include file="/shorthand/box.mako.rs" />
@@ -132,7 +132,6 @@ pub mod shorthands {
     <%include file="/shorthand/outline.mako.rs" />
     <%include file="/shorthand/padding.mako.rs" />
     <%include file="/shorthand/position.mako.rs" />
-    <%include file="/shorthand/serialize.mako.rs" />
     <%include file="/shorthand/text.mako.rs" />
 }
 
@@ -445,7 +444,7 @@ fn append_declaration_value<'a, W, I>
           try!(decl.to_css(dest));
        },
        AppendableValue::DeclarationsForShorthand(shorthand, decls) => {
-           try!(shorthands::append_shorthand_value(dest, shorthand, decls));
+           try!(append_shorthand_value(dest, shorthand, decls));
        }
   }
 
@@ -490,6 +489,19 @@ fn append_serialization<'a, W, I>(dest: &mut W,
 
     try!(append_declaration_value(dest, appendable_value, is_important));
     write!(dest, ";")
+}
+
+pub fn append_shorthand_value<'a, W, I>(dest: &mut W,
+                                        shorthand: Shorthand,
+                                        declarations: I)
+                                        -> fmt::Result
+                                        where W: fmt::Write, I: Iterator<Item=&'a PropertyDeclaration> {
+    match shorthand {
+        % for shorthand in data.shorthands:
+            Shorthand::${shorthand.camel_case} =>
+                shorthands::${shorthand.ident}::serialize(dest, declarations),
+        % endfor
+    }
 }
 
 pub fn parse_style_attribute(input: &str, base_url: &Url, error_reporter: StdBox<ParseErrorReporter + Send>,

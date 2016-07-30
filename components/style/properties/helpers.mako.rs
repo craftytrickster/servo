@@ -395,9 +395,11 @@
 %>
     % if shorthand:
     pub mod ${shorthand.ident} {
-        use cssparser::Parser;
+        #[allow(unused_imports)]
+        use cssparser::{Parser, ToCss};
         use parser::ParserContext;
         use properties::{longhands, PropertyDeclaration, DeclaredValue, Shorthand};
+        use std::fmt;
 
         pub struct Longhands {
             % for sub_property in shorthand.sub_properties:
@@ -478,10 +480,10 @@
 
             for decl in declarations {
                 match *decl {
-                    PropertyDeclaration::${name.upper()}Top(ref value) => { top = Some(value); },
-                    PropertyDeclaration::${name.upper()}Right(ref value) => { right = Some(value); },
-                    PropertyDeclaration::${name.upper()}Bottom(ref value) => { bottom = Some(value); },
-                    PropertyDeclaration::${name.upper()}Left(ref value) => { left = Some(value); },
+                    % for side in ["top", "right", "bottom", "left"]:
+                        PropertyDeclaration::${to_camel_case(sub_property_pattern % side)}(ref value)
+                            => { ${side} = Some(value) },
+                    % endfor
                     _ => return Err(fmt::Error)
                 }
             }
@@ -489,7 +491,7 @@
             let (top, right, bottom, left) = try_unwrap_longhands!(top, right, bottom, left);
             let (top, right, bottom, left) = try_unwrap_declared_values!(top, right, bottom, left);
 
-            serialize_positional_shorthand(dest, top, right, bottom, left)
+            super::serialize_four_sides_shorthand(dest, top, right, bottom, left)
         }
 
     </%self:shorthand>

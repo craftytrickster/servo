@@ -80,7 +80,7 @@
         Ok((grow, shrink))
     }
 
-    pub fn parse_value(context: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
+    pub fn parse_value(_: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
         let mut grow = None;
         let mut shrink = None;
         let mut basis = None;

@@ -46,7 +46,7 @@ ${helpers.four_sides_shorthand("border-style", "border-%s-style",
         let (top, right, bottom, left) = try_unwrap_longhands!(top, right, bottom, left);
         let (top, right, bottom, left) = try_unwrap_declared_values!(top, right, bottom, left);
 
-        serialize_positional_shorthand(dest, &top.0, &right.0, &bottom.0, &left.0)
+        super::serialize_four_sides_shorthand(dest, &top.0, &right.0, &bottom.0, &left.0)
     }
 
 </%helpers:shorthand>
@@ -89,7 +89,6 @@ pub fn parse_border(context: &ParserContext, input: &mut Parser)
     if any { Ok((color, style, width)) } else { Err(()) }
 }
 
-
 % for side in ["top", "right", "bottom", "left"]:
     <%helpers:shorthand name="border-${side}" sub_properties="${' '.join(
         'border-%s-%s' % (side, prop)
@@ -115,16 +114,16 @@ pub fn parse_border(context: &ParserContext, input: &mut Parser)
 
         for decl in declarations {
             match *decl {
-                PropertyDeclaration::Border${side.upper()}Width(ref value) => { width = Some(value); },
-                PropertyDeclaration::Border${side.upper()}Style(ref value) => { style = Some(value); },
-                PropertyDeclaration::Border${side.upper()}Color(ref value) => { color = Some(value); },
+                PropertyDeclaration::Border${side.title()}Width(ref value) => { width = Some(value); },
+                PropertyDeclaration::Border${side.title()}Style(ref value) => { style = Some(value); },
+                PropertyDeclaration::Border${side.title()}Color(ref value) => { color = Some(value); },
                 _ => return Err(fmt::Error)
             }
         }
 
         let (width, style, color) = try_unwrap_longhands!(width, style, color);
 
-        serialize_directional_border_shorthand(dest, width, style, color)
+        super::serialize_directional_border_shorthand(dest, width, style, color)
     }
 
     </%helpers:shorthand>
@@ -160,9 +159,9 @@ pub fn parse_border(context: &ParserContext, input: &mut Parser)
         for decl in declarations {
             match *decl {
                 % for side in ["top", "right", "bottom", "left"]:
-                    PropertyDeclaration::Border${side.upper()}Color(ref value) => { ${side}_color = Some(value); },
-                    PropertyDeclaration::Border${side.upper()}Style(ref value) => { ${side}_style = Some(value); },
-                    PropertyDeclaration::Border${side.upper()}Width(ref value) => { ${side}_width  = Some(value); },
+                    PropertyDeclaration::Border${side.title()}Color(ref value) => { ${side}_color = Some(value); },
+                    PropertyDeclaration::Border${side.title()}Style(ref value) => { ${side}_style = Some(value); },
+                    PropertyDeclaration::Border${side.title()}Width(ref value) => { ${side}_width  = Some(value); },
                 % endfor
 
                 _ => return Err(fmt::Error)
@@ -184,7 +183,7 @@ pub fn parse_border(context: &ParserContext, input: &mut Parser)
             left_color, left_style, left_width
         );
 
-        serialize_directional_border_shorthand(dest, top_width, top_style, top_color)
+        super::serialize_directional_border_shorthand(dest, top_width, top_style, top_color)
     }
 
 </%helpers:shorthand>
