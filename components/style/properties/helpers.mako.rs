@@ -446,10 +446,7 @@
             }
         }
 
-        #[allow(unused_variables)]
-        pub fn parse_value(context: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
-            ${caller.body()}
-        }
+        ${caller.body()}
     }
     % endif
 </%def>
@@ -460,12 +457,40 @@
                      for side in ['top', 'right', 'bottom', 'left'])}">
         use super::parse_four_sides;
         use values::specified;
-        let _unused = context;
-        let (top, right, bottom, left) = try!(parse_four_sides(input, ${parser_function}));
-        Ok(Longhands {
-            % for side in ["top", "right", "bottom", "left"]:
-                ${to_rust_ident(sub_property_pattern % side)}: Some(${side}),
-            % endfor
-        })
+
+        pub fn parse_value(context: &ParserContext, input: &mut Parser) -> Result<Longhands, ()> {
+            let _unused = context;
+            let (top, right, bottom, left) = try!(parse_four_sides(input, ${parser_function}));
+            Ok(Longhands {
+                % for side in ["top", "right", "bottom", "left"]:
+                    ${to_rust_ident(sub_property_pattern % side)}: Some(${side}),
+                % endfor
+            })
+        }
+
+        pub fn serialize<'a, W, I>(dest: &mut W, declarations: I) -> fmt::Result
+            where W: fmt::Write, I: Iterator<Item=&'a PropertyDeclaration> {
+
+            let mut top = None;
+            let mut right = None;
+            let mut bottom = None;
+            let mut left = None;
+
+            for decl in declarations {
+                match *decl {
+                    PropertyDeclaration::${name.upper()}Top(ref value) => { top = Some(value); },
+                    PropertyDeclaration::${name.upper()}Right(ref value) => { right = Some(value); },
+                    PropertyDeclaration::${name.upper()}Bottom(ref value) => { bottom = Some(value); },
+                    PropertyDeclaration::${name.upper()}Left(ref value) => { left = Some(value); },
+                    _ => return Err(fmt::Error)
+                }
+            }
+
+            let (top, right, bottom, left) = try_unwrap_longhands!(top, right, bottom, left);
+            let (top, right, bottom, left) = try_unwrap_declared_values!(top, right, bottom, left);
+
+            serialize_positional_shorthand(dest, top, right, bottom, left)
+        }
+
     </%self:shorthand>
 </%def>
