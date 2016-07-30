@@ -6,7 +6,9 @@ pub use cssparser::ToCss;
 pub use std::sync::Arc;
 pub use style::computed_values::display::T::inline_block;
 pub use style::properties::{DeclaredValue, PropertyDeclaration, PropertyDeclarationBlock};
-pub use style::values::specified::{Length, LengthOrPercentageOrAuto, LengthOrPercentage};
+pub use style::values::specified::{BorderStyle, CSSColor, Length, LengthOrPercentageOrAuto, LengthOrPercentage};
+pub use style::properties::longhands::outline_color::computed_value::T as ComputedColor;
+pub use style::values::RGBA;
 
 #[test]
 fn property_declaration_block_should_serialize_correctly() {
@@ -99,7 +101,7 @@ mod shorthand_serialization {
         pub use super::*;
 
         // we can use margin as a base to test out the different combinations
-        // but afterwards, we only need to to one test per "directional shorthand"
+        // but afterwards, we only need to to one test per "four sides shorthand"
         #[test]
         fn all_equal_properties_should_serialize_to_one_value() {
             let mut properties = Vec::new();
@@ -206,10 +208,6 @@ mod shorthand_serialization {
 
         #[test]
         fn border_color_should_serialize_correctly() {
-            use style::values::specified::CSSColor;
-            use style::properties::longhands::outline_color::computed_value::T as ComputedColor;
-            use style::values::RGBA;
-
             let mut properties = Vec::new();
 
             let red = DeclaredValue::Value(CSSColor {
@@ -235,8 +233,6 @@ mod shorthand_serialization {
 
         #[test]
         fn border_style_should_serialize_correctly() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let solid = DeclaredValue::Value(BorderStyle::solid);
@@ -248,6 +244,131 @@ mod shorthand_serialization {
 
             let serialization = shorthand_properties_to_string(properties);
             assert_eq!(serialization, "border-style: solid dotted;");
+        }
+    }
+
+
+    mod directional_border_shorthands {
+        pub use super::*;
+
+        use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
+        use style::properties::longhands::border_right_width::SpecifiedValue as RightContainer;
+        use style::properties::longhands::border_bottom_width::SpecifiedValue as BottomContainer;
+        use style::properties::longhands::border_left_width::SpecifiedValue as LeftContainer;
+
+        // we can use border-top as a base to test out the different combinations
+        // but afterwards, we only need to to one test per "directional border shorthand"
+
+        #[test]
+        fn directional_border_should_show_all_properties_when_values_are_set() {
+            use style::values::specified::BorderStyle;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            properties.push(PropertyDeclaration::BorderTopWidth(width));
+            properties.push(PropertyDeclaration::BorderTopStyle(style));
+            properties.push(PropertyDeclaration::BorderTopColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-top: 4px solid rgb(255, 0, 0);");
+        }
+
+        #[test]
+        fn directional_border_with_no_specified_style_will_show_style_as_none() {
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Initial;
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            properties.push(PropertyDeclaration::BorderTopWidth(width));
+            properties.push(PropertyDeclaration::BorderTopStyle(style));
+            properties.push(PropertyDeclaration::BorderTopColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-top: 4px none rgb(255, 0, 0);");
+        }
+
+        #[test]
+        fn directional_border_with_no_specified_color_will_not_show_color() {
+            use style::values::specified::BorderStyle;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderTopWidth(width));
+            properties.push(PropertyDeclaration::BorderTopStyle(style));
+            properties.push(PropertyDeclaration::BorderTopColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-top: 4px solid;");
+        }
+
+        #[test]
+        fn border_right_should_serialize_correctly() {
+            use style::values::specified::BorderStyle;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(RightContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderRightWidth(width));
+            properties.push(PropertyDeclaration::BorderRightStyle(style));
+            properties.push(PropertyDeclaration::BorderRightColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-right: 4px solid;");
+        }
+
+        #[test]
+        fn border_bottom_should_serialize_correctly() {
+            use style::values::specified::BorderStyle;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(BottomContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderBottomWidth(width));
+            properties.push(PropertyDeclaration::BorderBottomStyle(style));
+            properties.push(PropertyDeclaration::BorderBottomColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-bottom: 4px solid;");
+        }
+
+        #[test]
+        fn border_left_should_serialize_correctly() {
+            use style::values::specified::BorderStyle;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(LeftContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderLeftWidth(width));
+            properties.push(PropertyDeclaration::BorderLeftStyle(style));
+            properties.push(PropertyDeclaration::BorderLeftColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border-left: 4px solid;");
         }
     }
 }
