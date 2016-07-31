@@ -63,6 +63,8 @@ mod shorthand_serialization {
         block.to_css_string()
     }
 
+    // Add Test to show error if a longhand property is missing
+
     mod overflow {
         pub use super::*;
         use style::properties::longhands::overflow_x::computed_value::T as OverflowXValue;
@@ -248,7 +250,7 @@ mod shorthand_serialization {
     }
 
 
-    mod directional_border_shorthands {
+    mod border_shorthands {
         pub use super::*;
 
         use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
@@ -261,8 +263,6 @@ mod shorthand_serialization {
 
         #[test]
         fn directional_border_should_show_all_properties_when_values_are_set() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
@@ -301,8 +301,6 @@ mod shorthand_serialization {
 
         #[test]
         fn directional_border_with_no_specified_color_will_not_show_color() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
@@ -319,8 +317,6 @@ mod shorthand_serialization {
 
         #[test]
         fn border_right_should_serialize_correctly() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let width = DeclaredValue::Value(RightContainer(Length::from_px(4f32)));
@@ -337,8 +333,6 @@ mod shorthand_serialization {
 
         #[test]
         fn border_bottom_should_serialize_correctly() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let width = DeclaredValue::Value(BottomContainer(Length::from_px(4f32)));
@@ -355,8 +349,6 @@ mod shorthand_serialization {
 
         #[test]
         fn border_left_should_serialize_correctly() {
-            use style::values::specified::BorderStyle;
-
             let mut properties = Vec::new();
 
             let width = DeclaredValue::Value(LeftContainer(Length::from_px(4f32)));
@@ -369,6 +361,200 @@ mod shorthand_serialization {
 
             let serialization = shorthand_properties_to_string(properties);
             assert_eq!(serialization, "border-left: 4px solid;");
+        }
+
+        #[test]
+        fn border_should_serialize_correctly() {
+            let mut properties = Vec::new();
+
+            let top_width = DeclaredValue::Value(TopContainer(Length::from_px(4f32)));
+            let top_style = DeclaredValue::Value(BorderStyle::solid);
+            let top_color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderTopWidth(top_width));
+            properties.push(PropertyDeclaration::BorderTopStyle(top_style));
+            properties.push(PropertyDeclaration::BorderTopColor(top_color));
+
+            let right_width = DeclaredValue::Value(RightContainer(Length::from_px(4f32)));
+            let right_style = DeclaredValue::Value(BorderStyle::solid);
+            let right_color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderRightWidth(right_width));
+            properties.push(PropertyDeclaration::BorderRightStyle(right_style));
+            properties.push(PropertyDeclaration::BorderRightColor(right_color));
+
+            let bottom_width = DeclaredValue::Value(BottomContainer(Length::from_px(4f32)));
+            let bottom_style = DeclaredValue::Value(BorderStyle::solid);
+            let bottom_color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderBottomWidth(bottom_width));
+            properties.push(PropertyDeclaration::BorderBottomStyle(bottom_style));
+            properties.push(PropertyDeclaration::BorderBottomColor(bottom_color));
+
+            let left_width = DeclaredValue::Value(LeftContainer(Length::from_px(4f32)));
+            let left_style = DeclaredValue::Value(BorderStyle::solid);
+            let left_color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BorderLeftWidth(left_width));
+            properties.push(PropertyDeclaration::BorderLeftStyle(left_style));
+            properties.push(PropertyDeclaration::BorderLeftColor(left_color));
+            
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "border: 4px solid;");
+        }
+    }
+
+    mod list_style {
+        pub use super::*;
+        use style::properties::longhands::list_style_position::computed_value::T as ListStylePosition;
+        use style::properties::longhands::list_style_type::computed_value::T as ListStyleType;
+        use style::properties::longhands::list_style_image::SpecifiedValue as ListStyleImage;
+        use url::Url;
+
+        #[test]
+        fn list_style_should_show_all_properties_when_values_are_set() {
+            let mut properties = Vec::new();
+
+            let position = DeclaredValue::Value(ListStylePosition::inside);
+            let image = DeclaredValue::Value(ListStyleImage::Url(
+                Url::parse("http://servo/test.png").unwrap()
+            ));
+            let style_type = DeclaredValue::Value(ListStyleType::disc);
+
+            properties.push(PropertyDeclaration::ListStylePosition(position));
+            properties.push(PropertyDeclaration::ListStyleImage(image));
+            properties.push(PropertyDeclaration::ListStyleType(style_type));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "list-style: inside url(\"http://servo/test.png\") disc;");
+        }
+
+        #[test]
+        fn list_style_should_show_all_properties_even_if_only_one_is_set() {
+            let mut properties = Vec::new();
+
+            let position = DeclaredValue::Initial;
+            let image = DeclaredValue::Initial;
+            let style_type = DeclaredValue::Value(ListStyleType::disc);
+
+            properties.push(PropertyDeclaration::ListStylePosition(position));
+            properties.push(PropertyDeclaration::ListStyleImage(image));
+            properties.push(PropertyDeclaration::ListStyleType(style_type));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "list-style: outside none disc;");
+        }
+    }
+
+    #[test]
+    fn overflow_wrap_should_only_serialize_with_a_single_property() {
+        use style::properties::longhands::overflow_wrap::computed_value::T as OverflowWrap;
+
+        let value = DeclaredValue::Value(OverflowWrap::break_word);
+
+        let properties = vec![
+            PropertyDeclaration::OverflowWrap(value)
+        ];
+
+        let serialization = shorthand_properties_to_string(properties);
+
+        // word-wrap is considered an outdated alternative to overflow-wrap, but it is currently
+        // what servo is using in its naming conventions:
+        // https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap
+        assert_eq!(serialization, "word-wrap: break-word;");
+    }
+
+    mod outline {
+        use super::*;
+        use style::properties::longhands::outline_width::SpecifiedValue as WidthContainer;
+
+        #[test]
+        fn outline_should_show_all_properties_when_set() {
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(WidthContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            properties.push(PropertyDeclaration::OutlineWidth(width));
+            properties.push(PropertyDeclaration::OutlineStyle(style));
+            properties.push(PropertyDeclaration::OutlineColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "outline: 4px solid rgb(255, 0, 0);");
+        }
+
+        #[test]
+        fn outline_should_not_show_color_if_not_set() {
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(WidthContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Value(BorderStyle::solid);
+            let color = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::OutlineWidth(width));
+            properties.push(PropertyDeclaration::OutlineStyle(style));
+            properties.push(PropertyDeclaration::OutlineColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "outline: 4px solid;");
+        }
+
+        #[test]
+        fn outline_should_serialize_correctly_when_style_is_not_set() {
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(WidthContainer(Length::from_px(4f32)));
+            let style = DeclaredValue::Initial;
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+            properties.push(PropertyDeclaration::OutlineWidth(width));
+            properties.push(PropertyDeclaration::OutlineStyle(style));
+            properties.push(PropertyDeclaration::OutlineColor(color));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "outline: 4px none rgb(255, 0, 0);");
+        }
+    }
+
+    #[test]
+    fn columns_should_serialize_correctly() {
+        use style::properties::longhands::column_width::SpecifiedValue as ColumnWidth;
+        use style::properties::longhands::column_count::SpecifiedValue as ColumnCount;
+
+        let mut properties = Vec::new();
+
+        let width = DeclaredValue::Value(ColumnWidth::Auto);
+        let count = DeclaredValue::Value(ColumnCount::Auto);
+
+        properties.push(PropertyDeclaration::ColumnWidth(width));
+        properties.push(PropertyDeclaration::ColumnCount(count));
+
+        let serialization = shorthand_properties_to_string(properties);
+        assert_eq!(serialization, "columns: auto auto;");
+    }
+
+    mod transition {
+        #[test]
+        fn columns_should_serialize_correctly() {
+            use style::properties::longhands::column_width::SpecifiedValue as ColumnWidth;
+            use style::properties::longhands::column_count::SpecifiedValue as ColumnCount;
+
+            let mut properties = Vec::new();
+
+            let width = DeclaredValue::Value(ColumnWidth::Auto);
+            let count = DeclaredValue::Value(ColumnCount::Auto);
+
+            properties.push(PropertyDeclaration::ColumnWidth(width));
+            properties.push(PropertyDeclaration::ColumnCount(count));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "columns: auto auto;");
         }
     }
 }
