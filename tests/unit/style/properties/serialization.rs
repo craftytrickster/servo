@@ -6,7 +6,8 @@ pub use cssparser::ToCss;
 pub use std::sync::Arc;
 pub use style::computed_values::display::T::inline_block;
 pub use style::properties::{DeclaredValue, PropertyDeclaration, PropertyDeclarationBlock};
-pub use style::values::specified::{BorderStyle, CSSColor, Length, LengthOrPercentageOrAuto, LengthOrPercentage};
+pub use style::values::specified::{BorderStyle, CSSColor, Length};
+pub use style::values::specified::{LengthOrPercentage, LengthOrPercentageOrAuto, LengthOrPercentageOrAutoOrContent};
 pub use style::properties::longhands::outline_color::computed_value::T as ComputedColor;
 pub use style::values::RGBA;
 
@@ -63,7 +64,7 @@ mod shorthand_serialization {
         block.to_css_string()
     }
 
-    // Add Test to show error if a longhand property is missing
+    // Add Test to show error if a longhand property is missing!!!!!!
 
     mod overflow {
         pub use super::*;
@@ -186,12 +187,12 @@ mod shorthand_serialization {
 
         #[test]
         fn border_width_should_serialize_correctly() {
-            let mut properties = Vec::new();
-
-            use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
-            use style::properties::longhands::border_right_width::SpecifiedValue as RightContainer;
             use style::properties::longhands::border_bottom_width::SpecifiedValue as BottomContainer;
             use style::properties::longhands::border_left_width::SpecifiedValue as LeftContainer;
+            use style::properties::longhands::border_right_width::SpecifiedValue as RightContainer;
+            use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
+
+            let mut properties = Vec::new();
 
             let top_px = DeclaredValue::Value(TopContainer(Length::from_px(10f32)));
             let bottom_px = DeclaredValue::Value(BottomContainer(Length::from_px(10f32)));
@@ -251,12 +252,11 @@ mod shorthand_serialization {
 
 
     mod border_shorthands {
-        pub use super::*;
-
-        use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
-        use style::properties::longhands::border_right_width::SpecifiedValue as RightContainer;
         use style::properties::longhands::border_bottom_width::SpecifiedValue as BottomContainer;
         use style::properties::longhands::border_left_width::SpecifiedValue as LeftContainer;
+        use style::properties::longhands::border_right_width::SpecifiedValue as RightContainer;
+        use style::properties::longhands::border_top_width::SpecifiedValue as TopContainer;
+        use super::*;
 
         // we can use border-top as a base to test out the different combinations
         // but afterwards, we only need to to one test per "directional border shorthand"
@@ -398,17 +398,17 @@ mod shorthand_serialization {
             properties.push(PropertyDeclaration::BorderLeftWidth(left_width));
             properties.push(PropertyDeclaration::BorderLeftStyle(left_style));
             properties.push(PropertyDeclaration::BorderLeftColor(left_color));
-            
+
             let serialization = shorthand_properties_to_string(properties);
             assert_eq!(serialization, "border: 4px solid;");
         }
     }
 
     mod list_style {
-        pub use super::*;
+        use style::properties::longhands::list_style_image::SpecifiedValue as ListStyleImage;
         use style::properties::longhands::list_style_position::computed_value::T as ListStylePosition;
         use style::properties::longhands::list_style_type::computed_value::T as ListStyleType;
-        use style::properties::longhands::list_style_image::SpecifiedValue as ListStyleImage;
+        use super::*;
         use url::Url;
 
         #[test]
@@ -465,8 +465,8 @@ mod shorthand_serialization {
     }
 
     mod outline {
-        use super::*;
         use style::properties::longhands::outline_width::SpecifiedValue as WidthContainer;
+        use super::*;
 
         #[test]
         fn outline_should_show_all_properties_when_set() {
@@ -524,8 +524,8 @@ mod shorthand_serialization {
 
     #[test]
     fn columns_should_serialize_correctly() {
-        use style::properties::longhands::column_width::SpecifiedValue as ColumnWidth;
         use style::properties::longhands::column_count::SpecifiedValue as ColumnCount;
+        use style::properties::longhands::column_width::SpecifiedValue as ColumnWidth;
 
         let mut properties = Vec::new();
 
@@ -539,22 +539,292 @@ mod shorthand_serialization {
         assert_eq!(serialization, "columns: auto auto;");
     }
 
-    mod transition {
-        #[test]
-        fn columns_should_serialize_correctly() {
-            use style::properties::longhands::column_width::SpecifiedValue as ColumnWidth;
-            use style::properties::longhands::column_count::SpecifiedValue as ColumnCount;
+    #[test]
+    fn transition_should_serialize_all_available_properties() {
+        use euclid::point::Point2D;
+        use style::properties::animated_properties::TransitionProperty;
+        use style::properties::longhands::transition_duration::computed_value::T as DurationContainer;
+        use style::properties::longhands::transition_property::computed_value::T as PropertyContainer;
+        use style::properties::longhands::transition_timing_function::computed_value::T as TimingContainer;
+        use style::properties::longhands::transition_timing_function::computed_value::TransitionTimingFunction;
+        use style::values::specified::Time as TimeContainer;
 
+        let property_name = DeclaredValue::Value(
+            PropertyContainer(vec![TransitionProperty::MarginLeft])
+        );
+
+        let duration = DeclaredValue::Value(
+            DurationContainer(vec![TimeContainer(3f32)])
+        );
+
+        let delay = DeclaredValue::Value(
+            DurationContainer(vec![TimeContainer(4f32)])
+        );
+
+        let timing_function = DeclaredValue::Value(
+            TimingContainer(vec![
+                TransitionTimingFunction::CubicBezier(Point2D::new(0f32, 5f32), Point2D::new(5f32, 10f32))
+            ])
+        );
+
+        let mut properties = Vec::new();
+
+        properties.push(PropertyDeclaration::TransitionProperty(property_name));
+        properties.push(PropertyDeclaration::TransitionDelay(delay));
+        properties.push(PropertyDeclaration::TransitionDuration(duration));
+        properties.push(PropertyDeclaration::TransitionTimingFunction(timing_function));
+
+        let serialization = shorthand_properties_to_string(properties);
+        assert_eq!(serialization, "transition: margin-left 3s cubic-bezier(0, 5, 5, 10) 4s;");
+    }
+
+    #[test]
+    fn flex_should_serialize_all_available_properties() {
+        use style::values::specified::Number as NumberContainer;
+        use style::values::specified::Percentage as PercentageContainer;
+
+        let mut properties = Vec::new();
+
+        let grow = DeclaredValue::Value(NumberContainer(2f32));
+        let shrink = DeclaredValue::Value(NumberContainer(3f32));
+        let basis = DeclaredValue::Value(
+            LengthOrPercentageOrAutoOrContent::Percentage(PercentageContainer(0.5f32))
+        );
+
+        properties.push(PropertyDeclaration::FlexGrow(grow));
+        properties.push(PropertyDeclaration::FlexShrink(shrink));
+        properties.push(PropertyDeclaration::FlexBasis(basis));
+
+        let serialization = shorthand_properties_to_string(properties);
+        assert_eq!(serialization, "flex: 2 3 50%;");
+    }
+
+    #[test]
+    fn flex_flow_should_serialize_all_available_properties() {
+        use style::properties::longhands::flex_direction::computed_value::T as FlexDirection;
+        use style::properties::longhands::flex_wrap::computed_value::T as FlexWrap;
+
+        let mut properties = Vec::new();
+
+        let direction = DeclaredValue::Value(FlexDirection::row);
+        let wrap = DeclaredValue::Value(FlexWrap::wrap);
+
+        properties.push(PropertyDeclaration::FlexDirection(direction));
+        properties.push(PropertyDeclaration::FlexWrap(wrap));
+
+        let serialization = shorthand_properties_to_string(properties);
+        assert_eq!(serialization, "flex-flow: row wrap;");
+    }
+
+    // TODO: Populate Atom Cache for testing so that the font shorthand can be tested
+    // TODO: DO NOT Serialize line height if set to normal
+    /*
+    mod font {
+        use super::*;
+        use style::properties::longhands::font_family::computed_value::T as FamilyContainer;
+        use style::properties::longhands::font_family::computed_value::FontFamily;
+        use style::properties::longhands::font_style::computed_value::T as FontStyle;
+        use style::properties::longhands::font_variant::computed_value::T as FontVariant;
+        use style::properties::longhands::font_weight::SpecifiedValue as FontWeight;
+        use style::properties::longhands::font_size::SpecifiedValue as FontSizeContainer;
+        use style::properties::longhands::font_stretch::computed_value::T as FontStretch;
+        use style::properties::longhands::line_height::SpecifiedValue as LineHeight;
+
+        #[test]
+        fn font_should_serialize_all_available_properties() {
             let mut properties = Vec::new();
 
-            let width = DeclaredValue::Value(ColumnWidth::Auto);
-            let count = DeclaredValue::Value(ColumnCount::Auto);
 
-            properties.push(PropertyDeclaration::ColumnWidth(width));
-            properties.push(PropertyDeclaration::ColumnCount(count));
+            let font_family = DeclaredValue::Value(
+                FamilyContainer(vec![FontFamily::Generic(atom!("serif"))])
+            );
+
+
+            let font_style = DeclaredValue::Value(FontStyle::italic);
+            let font_variant = DeclaredValue::Value(FontVariant::normal);
+            let font_weight = DeclaredValue::Value(FontWeight::Bolder);
+            let font_size = DeclaredValue::Value(FontSizeContainer(
+                LengthOrPercentage::Length(Length::from_px(4f32)))
+            );
+            let font_stretch = DeclaredValue::Value(FontStretch::expanded);
+            let line_height = DeclaredValue::Value(LineHeight::Number(3f32));
+
+            properties.push(PropertyDeclaration::FontFamily(font_family));
+            properties.push(PropertyDeclaration::FontStyle(font_style));
+            properties.push(PropertyDeclaration::FontVariant(font_variant));
+            properties.push(PropertyDeclaration::FontWeight(font_weight));
+            properties.push(PropertyDeclaration::FontSize(font_size));
+            properties.push(PropertyDeclaration::FontStretch(font_stretch));
+            properties.push(PropertyDeclaration::LineHeight(line_height));
 
             let serialization = shorthand_properties_to_string(properties);
-            assert_eq!(serialization, "columns: auto auto;");
+            assert_eq!(serialization, "font:;");
+        }
+    }
+    */
+
+    // TODO: Populate Atom Cache for testing so that the animation shorthand can be tested
+    /*
+    #[test]
+    fn animation_should_serialize_all_available_properties() {
+        let mut properties = Vec::new();
+
+        assert_eq!(serialization, "animation;");
+    }
+    */
+
+    mod background {
+        use style::properties::longhands::background_attachment::computed_value::T as Attachment;
+        use style::properties::longhands::background_clip::computed_value::T as Clip;
+        use style::properties::longhands::background_image::SpecifiedValue as ImageContainer;
+        use style::properties::longhands::background_origin::computed_value::T as Origin;
+        use style::properties::longhands::background_position::SpecifiedValue as Position;
+        use style::properties::longhands::background_repeat::computed_value::T as Repeat;
+        use style::properties::longhands::background_size::SpecifiedExplicitSize;
+        use style::properties::longhands::background_size::SpecifiedValue as Size;
+        use style::values::specified::Image;
+        use super::*;
+        use url::Url;
+
+
+        #[test]
+        fn background_should_serialize_all_available_properties_when_specified() {
+            let mut properties = Vec::new();
+
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            let position = DeclaredValue::Value(
+                Position {
+                    horizontal: LengthOrPercentage::Length(Length::from_px(7f32)),
+                    vertical: LengthOrPercentage::Length(Length::from_px(4f32))
+                }
+            );
+
+            let repeat = DeclaredValue::Value(Repeat::repeat_x);
+            let attachment = DeclaredValue::Value(Attachment::scroll);
+
+            let image = DeclaredValue::Value(ImageContainer(
+                Some(Image::Url(Url::parse("http://servo/test.png").unwrap()))
+            ));
+
+            let size = DeclaredValue::Value(
+                Size::Explicit(SpecifiedExplicitSize {
+                    width: LengthOrPercentageOrAuto::Length(Length::from_px(70f32)),
+                    height: LengthOrPercentageOrAuto::Length(Length::from_px(50f32))
+                }
+            ));
+
+            let origin = DeclaredValue::Value(Origin::border_box);
+            let clip = DeclaredValue::Value(Clip::padding_box);
+
+            properties.push(PropertyDeclaration::BackgroundColor(color));
+            properties.push(PropertyDeclaration::BackgroundPosition(position));
+            properties.push(PropertyDeclaration::BackgroundRepeat(repeat));
+            properties.push(PropertyDeclaration::BackgroundAttachment(attachment));
+            properties.push(PropertyDeclaration::BackgroundImage(image));
+            properties.push(PropertyDeclaration::BackgroundSize(size));
+            properties.push(PropertyDeclaration::BackgroundOrigin(origin));
+            properties.push(PropertyDeclaration::BackgroundClip(clip));
+
+            let serialization = shorthand_properties_to_string(properties);
+
+            assert_eq!(
+                serialization,
+                "background: rgb(255, 0, 0) url(\"http://servo/test.png\") repeat-x \
+                scroll 7px 4px / 70px 50px border-box padding-box;"
+            );
+        }
+
+        #[test]
+        fn background_should_combine_origin_and_clip_properties_when_equal() {
+            let mut properties = Vec::new();
+
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            let position = DeclaredValue::Value(
+                Position {
+                    horizontal: LengthOrPercentage::Length(Length::from_px(7f32)),
+                    vertical: LengthOrPercentage::Length(Length::from_px(4f32))
+                }
+            );
+
+            let repeat = DeclaredValue::Value(Repeat::repeat_x);
+            let attachment = DeclaredValue::Value(Attachment::scroll);
+
+            let image = DeclaredValue::Value(ImageContainer(
+                Some(Image::Url(Url::parse("http://servo/test.png").unwrap()))
+            ));
+
+            let size = DeclaredValue::Value(
+                Size::Explicit(SpecifiedExplicitSize {
+                    width: LengthOrPercentageOrAuto::Length(Length::from_px(70f32)),
+                    height: LengthOrPercentageOrAuto::Length(Length::from_px(50f32))
+                })
+            );
+
+            let origin = DeclaredValue::Value(Origin::padding_box);
+            let clip = DeclaredValue::Value(Clip::padding_box);
+
+            properties.push(PropertyDeclaration::BackgroundColor(color));
+            properties.push(PropertyDeclaration::BackgroundPosition(position));
+            properties.push(PropertyDeclaration::BackgroundRepeat(repeat));
+            properties.push(PropertyDeclaration::BackgroundAttachment(attachment));
+            properties.push(PropertyDeclaration::BackgroundImage(image));
+            properties.push(PropertyDeclaration::BackgroundSize(size));
+            properties.push(PropertyDeclaration::BackgroundOrigin(origin));
+            properties.push(PropertyDeclaration::BackgroundClip(clip));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(
+                serialization,
+                "background: rgb(255, 0, 0) url(\"http://servo/test.png\") repeat-x \
+                scroll 7px 4px / 70px 50px padding-box;"
+            );
+        }
+
+        #[test]
+        fn background_should_always_print_color_and_url_and_repeat_and_attachment_and_position() {
+            let mut properties = Vec::new();
+
+            let color = DeclaredValue::Value(CSSColor {
+                parsed: ComputedColor::RGBA(RGBA { red: 1f32, green: 0f32, blue: 0f32, alpha: 1f32 }),
+                authored: None
+            });
+
+            let position = DeclaredValue::Value(
+                Position {
+                    horizontal: LengthOrPercentage::Length(Length::from_px(0f32)),
+                    vertical: LengthOrPercentage::Length(Length::from_px(0f32))
+                }
+            );
+
+            let repeat = DeclaredValue::Value(Repeat::repeat_x);
+            let attachment = DeclaredValue::Value(Attachment::scroll);
+
+            let image = DeclaredValue::Value(ImageContainer(None));
+
+            let size = DeclaredValue::Initial;
+
+            let origin = DeclaredValue::Initial;
+            let clip = DeclaredValue::Initial;
+
+            properties.push(PropertyDeclaration::BackgroundColor(color));
+            properties.push(PropertyDeclaration::BackgroundPosition(position));
+            properties.push(PropertyDeclaration::BackgroundRepeat(repeat));
+            properties.push(PropertyDeclaration::BackgroundAttachment(attachment));
+            properties.push(PropertyDeclaration::BackgroundImage(image));
+            properties.push(PropertyDeclaration::BackgroundSize(size));
+            properties.push(PropertyDeclaration::BackgroundOrigin(origin));
+            properties.push(PropertyDeclaration::BackgroundClip(clip));
+
+            let serialization = shorthand_properties_to_string(properties);
+            assert_eq!(serialization, "background: rgb(255, 0, 0) none repeat-x scroll 0px 0px;");
         }
     }
 }

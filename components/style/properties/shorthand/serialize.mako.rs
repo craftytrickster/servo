@@ -288,7 +288,7 @@ fn serialize_flex_flow_shorthand<'a, W, I>(dest: &mut W,
 
     match *flex_wrap {
         DeclaredValue::Initial => write!(dest, "nowrap"),
-        _ => flex_direction.to_css(dest)
+        _ => flex_wrap.to_css(dest)
     }
 }
 
