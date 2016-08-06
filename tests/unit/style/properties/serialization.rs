@@ -678,11 +678,12 @@ mod shorthand_serialization {
         use style::properties::longhands::background_clip::computed_value::T as Clip;
         use style::properties::longhands::background_image::SpecifiedValue as ImageContainer;
         use style::properties::longhands::background_origin::computed_value::T as Origin;
-        use style::properties::longhands::background_position::SpecifiedValue as Position;
+        use style::properties::longhands::background_position::SpecifiedValue as PositionContainer;
         use style::properties::longhands::background_repeat::computed_value::T as Repeat;
         use style::properties::longhands::background_size::SpecifiedExplicitSize;
         use style::properties::longhands::background_size::SpecifiedValue as Size;
         use style::values::specified::Image;
+        use style::values::specified::position::Position;
         use super::*;
 
         #[test]
@@ -694,12 +695,12 @@ mod shorthand_serialization {
                 authored: None
             });
 
-            let position = DeclaredValue::Value(
+            let position = DeclaredValue::Value(PositionContainer(
                 Position {
                     horizontal: LengthOrPercentage::Length(Length::from_px(7f32)),
                     vertical: LengthOrPercentage::Length(Length::from_px(4f32))
                 }
-            );
+            ));
 
             let repeat = DeclaredValue::Value(Repeat::repeat_x);
             let attachment = DeclaredValue::Value(Attachment::scroll);
@@ -745,12 +746,12 @@ mod shorthand_serialization {
                 authored: None
             });
 
-            let position = DeclaredValue::Value(
+            let position = DeclaredValue::Value(PositionContainer(
                 Position {
                     horizontal: LengthOrPercentage::Length(Length::from_px(7f32)),
                     vertical: LengthOrPercentage::Length(Length::from_px(4f32))
                 }
-            );
+            ));
 
             let repeat = DeclaredValue::Value(Repeat::repeat_x);
             let attachment = DeclaredValue::Value(Attachment::scroll);
@@ -795,12 +796,12 @@ mod shorthand_serialization {
                 authored: None
             });
 
-            let position = DeclaredValue::Value(
+            let position = DeclaredValue::Value(PositionContainer(
                 Position {
                     horizontal: LengthOrPercentage::Length(Length::from_px(0f32)),
                     vertical: LengthOrPercentage::Length(Length::from_px(0f32))
                 }
-            );
+            ));
 
             let repeat = DeclaredValue::Value(Repeat::repeat_x);
             let attachment = DeclaredValue::Value(Attachment::scroll);

@@ -520,7 +520,7 @@
 
         impl<'a> ToCss for LonghandsToSerialize<'a>  {
             fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
-                super::serialize_four_sides_shorthand(
+                super::serialize_four_sides(
                     dest,
                     self.${to_rust_ident(sub_property_pattern % 'top')},
                     self.${to_rust_ident(sub_property_pattern % 'right')},
